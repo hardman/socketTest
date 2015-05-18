@@ -18,39 +18,45 @@ void waitAccept(){
     pfdHandler.addOneFd(socketFd, POLLIN | POLLOUT | POLLERR);
     
     while (true) {
-        int nfds = poll(pfdHandler.fds, pfdHandler.getCount(), -1);
-        for (int i = 0; i < nfds; i++) {
+        poll(pfdHandler.fds, pfdHandler.getCount(), -1);
+        for (int i = 0; i < pfdHandler.getCount(); i++) {
             if(pfdHandler.fds[i].fd == socketFd){
-                int clientFd = accept(socketFd, NULL, NULL);
-                if (clientFd < 0 && errno == EAGAIN) {
-                    //errorlog("accept");
-                }else{
-                    pfdHandler.addOneFd(clientFd, POLLIN | POLLOUT | POLLERR);
-                    debuglog("one client connected! i = %d\n", i);
+                if(pfdHandler.fds[i].revents){
+                    int clientFd = accept(socketFd, NULL, NULL);
+                    if (clientFd < 0 && errno == EAGAIN) {
+                        //errorlog("accept");
+                    }else{
+                        pfdHandler.addOneFd(clientFd, POLLIN | POLLOUT | POLLERR);
+                        debuglog("one client connected! i = %d\n", i);
+                    }
                 }
-            }else if(pfdHandler.fds[i].revents & POLLIN){
-                debuglog("POLLIN! i = %d\n", i);
-                char buf[4096], bf[512];
-                memset(buf, 0, 4096);
-                memset(bf, 0, 512);
-                int len = -1;
-                char *p = buf;
-                while ((len = read(socketFd, bf, 512) > 0)) {
-                    memcpy(p, bf, len);
-                    p += len;
+            }else{
+                if(pfdHandler.fds[i].revents & POLLIN){
+                    debuglog("POLLIN! i = %d\n", i);
+                    char buf[4096], bf[512];
+                    memset(buf, 0, 4096);
+                    memset(bf, 0, 512);
+                    ssize_t len = -1;
+                    char *p = buf;
+                    while ((len = read(pfdHandler.fds[i].fd, bf, 512)) > 0) {
+                        memcpy(p, bf, len);
+                        p += len;
+                    }
+                    if(len == 0 || (len < 0 && errno == EAGAIN)){
+                        debuglog("client receive msg ok, msg=%s \n", buf);
+                    }else if(len < 0){
+                        debuglog("client receive msg then remove client \n");
+                        pfdHandler.removeOneFd(pfdHandler.fds[i].fd);
+                    }
                 }
-                if(len < 0 && errno == EAGAIN){
-                    debuglog("client receive msg ok, msg=%s \n", buf);
-                }else{
-                    errorlog("client receive msg then remove client");
+                if(pfdHandler.fds[i].revents & POLLOUT){
+                    //debuglog("POLLOUT i = %d!\n", i);
+                }
+                if(pfdHandler.fds[i].revents & POLLERR){
+                    debuglog("error i = %d, ", i);
+                    errorlog("POLLERR! then remove client!\n");
                     pfdHandler.removeOneFd(pfdHandler.fds[i].fd);
                 }
-            }else if(pfdHandler.fds[i].revents & POLLOUT){
-                debuglog("POLLOUT i = %d!\n", i);
-            }else if(pfdHandler.fds[i].revents & POLLERR){
-                debuglog("error i = %d, ", i);
-                errorlog("POLLERR! then remove client!\n");
-                pfdHandler.removeOneFd(pfdHandler.fds[i].fd);
             }
         }
     }

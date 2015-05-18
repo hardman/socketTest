@@ -23,9 +23,9 @@ void waitToWrite(){
                 char buf[4096], bf[512];
                 memset(buf, 0, 4096);
                 memset(bf, 0, 512);
-                int len = -1;
+                ssize_t len = -1;
                 char *p = buf;
-                while ((len = read(socketFd, bf, 512) > 0)) {
+                while ((len = read(socketFd, bf, 512)) > 0) {
                     memcpy(p, bf, len);
                     p += len;
                 }
@@ -39,8 +39,9 @@ void waitToWrite(){
                 debuglog("POLLOUT!!\n");
                 string s;
                 cin>>s;
-                int len = write(socketFd, s.c_str(), s.size());
-                debuglog("write ret=%d\n", len);
+                ssize_t len = write(socketFd, s.c_str(), s.size());
+                debuglog("write ret=%zd\n", len);
+                errorlog("write has some error?");
             }else if(pfd.revents & POLLERR){
                 errorlog("POLLERROR!!");
             }
@@ -71,6 +72,7 @@ void connectServer(const char * ip, int port){
             errorlog("connect socketFd");
             return;
         }
+        errno = 0;
     }
     waitToWrite();
 }

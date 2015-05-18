@@ -1,3 +1,6 @@
+#ifndef __SOCKET_HEADER_H__
+#define __SOCKET_HEADER_H__
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -104,7 +107,7 @@ public:
     }
     bool addOneFd(int fd, int flags){
         for(int i = 0; i < _num; i++){
-            if(fds[i].fd == 0){
+            if(fds[i].fd == 0 && fds[i].events == 0){
                 fds[i].fd = fd;
                 fds[i].events = flags;
                 _count++;
@@ -116,22 +119,22 @@ public:
     
     bool removeOneFd(int fd){
         int i = 0;
-        for(; i < _num; i++){
+        for(; i < _count; i++){
             if(fds[i].fd == fd){
                 break;
             }
         }
         
-        if(i >= _num){
+        if(i >= _count){
             return false;
         }
         
-        if(i + 1 < _num){
-            memcpy(&fds[i], &fds[i + 1], sizeof(struct pollfd) * (_num - i - 1));
+        if(i + 1 < _count){
+            memcpy(&fds[i], &fds[i + 1], sizeof(struct pollfd) * (_count - i - 1));
         }
         
-        if(i + 1 != _num){
-            memset(&fds[_num - 1], 0, sizeof(struct pollfd));
+        if(i + 1 != _count){
+            memset(&fds[_count - 1], 0, sizeof(struct pollfd));
         }
         
         _count--;
@@ -146,3 +149,5 @@ private:
     PollfdHandler(const PollfdHandler &){}
     PollfdHandler& operator=(const PollfdHandler &){return *this;}
 };
+
+#endif
